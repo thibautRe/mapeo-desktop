@@ -130,10 +130,14 @@ export function Api ({ baseUrl }) {
       }
     },
 
-    addSyncListener: function addSyncListener (handler) {
+    addDataChangedListener: function (ev, handler) {
       ipcRenderer.on('sync-complete', handler)
+      ipcRenderer.on(ev, handler)
       return {
-        remove: () => ipcRenderer.removeListener('sync-complete', handler)
+        remove: () => {
+          ipcRenderer.removeListener('sync-complete', handler)
+          ipcRenderer.removeListener(ev, handler)
+        }
       }
     },
 
