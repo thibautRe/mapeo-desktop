@@ -1,4 +1,7 @@
 #!/usr/bin/env electron
+require('@babel/register')({
+  presets: ['@babel/env']
+})
 
 var path = require('path')
 var minimist = require('minimist')

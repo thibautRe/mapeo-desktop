@@ -2,12 +2,14 @@ var path = require('path')
 var os = require('os')
 var { ipcMain } = require('electron')
 var createMapeoRouter = require('mapeo-server')
+var body = require('body/json')
 var ecstatic = require('ecstatic')
 var createOsmRouter = require('osm-p2p-server')
 var http = require('http')
 var logger = require('electron-timber')
 var throttle = require('lodash/throttle')
 
+var Report = require('./reports')
 var userConfig = require('./user-config')
 
 module.exports = function (osm, media, sendIpc, opts) {
@@ -33,13 +35,22 @@ module.exports = function (osm, media, sendIpc, opts) {
       baseDir: 'static'
     })
 
-    var m = osmRouter.handle(req, res) || mapeoRouter.handle(req, res)
-    if (!m) {
-      staticHandler(req, res, function (err) {
-        if (err) logger.error(err)
-        res.statusCode = 404
-        res.end('Not Found')
+    if (req.url === '/report' && req.method === 'POST') {
+      body(req, function (err, body) {
+        if (err) return res.end(err)
+        const observations = body.observations
+        var report = new Report(observations)
+        res.end(JSON.stringify(report.id))
       })
+    } else {
+      var m = osmRouter.handle(req, res) || mapeoRouter.handle(req, res)
+      if (!m) {
+        staticHandler(req, res, function (err) {
+          if (err) logger.error(err)
+          res.statusCode = 404
+          res.end('Not Found')
+        })
+      }
     }
   })
 
@@ -192,3 +203,4 @@ module.exports = function (osm, media, sendIpc, opts) {
 
   return server
 }
+

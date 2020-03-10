@@ -52,6 +52,7 @@ export function Api ({ baseUrl }) {
     return logRequest('<POST: ' + url, req.post(url, { json: data }).json())
   }
 
+
   // All public methods
   const api = {
     /**
@@ -107,6 +108,13 @@ export function Api ({ baseUrl }) {
         schemaVersion: 3
       }
       return post('observations', valueForServer)
+    },
+
+    createReport: function (observations) {
+      const valueForServer = {
+        observations
+      }
+      return post('report', valueForServer)
     },
 
     /**
@@ -196,7 +204,8 @@ export function Api ({ baseUrl }) {
     // Return the url to a map style
     getMapStyleUrl: function getMapStyleUrl (id) {
       return `${baseUrl}styles/${id}/style.json?${startupTime}`
-    }
+    },
+
   }
 
   return api
