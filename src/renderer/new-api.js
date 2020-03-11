@@ -52,7 +52,6 @@ export function Api ({ baseUrl }) {
     return logRequest('<POST: ' + url, req.post(url, { json: data }).json())
   }
 
-
   // All public methods
   const api = {
     /**
@@ -110,16 +109,8 @@ export function Api ({ baseUrl }) {
       return post('observations', valueForServer)
     },
 
-    createReport: function (
-      observations, fieldState, mapboxglAccessToken, mapStyle
-    ) {
-      const valueForServer = {
-        observations,
-        fieldState,
-        mapboxglAccessToken,
-        mapStyle
-      }
-      return post('report', valueForServer)
+    createReport: function (args) {
+      return post('report', args)
     },
 
     /**

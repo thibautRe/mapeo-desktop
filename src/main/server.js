@@ -1,4 +1,5 @@
 var path = require('path')
+var fs = require('fs')
 var os = require('os')
 var { app, ipcMain } = require('electron')
 var createMapeoRouter = require('mapeo-server')
@@ -9,10 +10,9 @@ var http = require('http')
 var logger = require('electron-timber')
 var throttle = require('lodash/throttle')
 
+const crypto = require('crypto')
 var report = require('./reports')
 var userConfig = require('./user-config')
-
-const crypto = require('crypto')
 
 module.exports = function (osm, media, sendIpc, opts) {
   if (!opts) opts = {}
@@ -28,7 +28,6 @@ module.exports = function (osm, media, sendIpc, opts) {
   // hostname often includes a TLD, which we remove
   const computerName = (os.hostname() || 'Mapeo Desktop').split('.')[0]
   mapeoCore.sync.setName(computerName)
-  var rendering = false
 
   var server = http.createServer(function (req, res) {
     logger.log(req.method + ': ' + req.url)
@@ -38,21 +37,34 @@ module.exports = function (osm, media, sendIpc, opts) {
       baseDir: 'static'
     })
 
-    // TODO: this is super hacky...
+    // TODO: Move to another file
+    const reportsDirectory = path.join(app.getPath('userData'), 'reports')
+    var match = req.url.match(/\/report\/(.*.pdf)/)
+    if (match) {
+      var filename = match[1]
+      var destination = path.join(reportsDirectory, filename)
+      fs.createReadStream(destination).pipe(res)
+    }
 
     if (req.url === '/report' && req.method === 'POST') {
-      body(req, function (err, body) {
-        if (err) return res.end(err)
+      body(req, { limit: '50mb' }, function (err, body) {
+        if (err) return res.end(JSON.stringify({ error: err.toString() }))
         const observations = body.observations
-        while (rendering) {}
-        rendering = true
+        console.log('getting request', observations.length, 'observations')
+        console.log('observation example:', JSON.stringify(observations[0], null, 2))
+
+        // TODO: to improve performance,
+        // 1. generate hash based on observations content,
+        // 2. check to see if PDF has already been created
+        //  -> if so, use that
+        //  -> if not, generate new
         var pdf = report.createPDF(observations)
         var filename = crypto.randomBytes(16).toString('hex') + '.pdf'
-        var destination = path.join(app.getPath('userData'), 'reports', filename)
+        var destination = path.join(reportsDirectory, filename)
+
         console.log('saving ', destination)
         report.save(pdf, destination)
-        rendering = false
-        res.end(JSON.stringify(filename))
+        res.end(JSON.stringify(`/report/${filename}`))
       })
     } else {
       var m = osmRouter.handle(req, res) || mapeoRouter.handle(req, res)
