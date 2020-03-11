@@ -1,6 +1,6 @@
 var path = require('path')
 var os = require('os')
-var { ipcMain } = require('electron')
+var { app, ipcMain } = require('electron')
 var createMapeoRouter = require('mapeo-server')
 var body = require('body/json')
 var ecstatic = require('ecstatic')
@@ -9,8 +9,10 @@ var http = require('http')
 var logger = require('electron-timber')
 var throttle = require('lodash/throttle')
 
-var Report = require('./reports')
+var report = require('./reports')
 var userConfig = require('./user-config')
+
+const crypto = require('crypto')
 
 module.exports = function (osm, media, sendIpc, opts) {
   if (!opts) opts = {}
@@ -26,6 +28,7 @@ module.exports = function (osm, media, sendIpc, opts) {
   // hostname often includes a TLD, which we remove
   const computerName = (os.hostname() || 'Mapeo Desktop').split('.')[0]
   mapeoCore.sync.setName(computerName)
+  var rendering = false
 
   var server = http.createServer(function (req, res) {
     logger.log(req.method + ': ' + req.url)
@@ -35,12 +38,21 @@ module.exports = function (osm, media, sendIpc, opts) {
       baseDir: 'static'
     })
 
+    // TODO: this is super hacky...
+
     if (req.url === '/report' && req.method === 'POST') {
       body(req, function (err, body) {
         if (err) return res.end(err)
         const observations = body.observations
-        var report = new Report(observations)
-        res.end(JSON.stringify(report.id))
+        while (rendering) {}
+        rendering = true
+        var pdf = report.createPDF(observations)
+        var filename = crypto.randomBytes(16).toString('hex') + '.pdf'
+        var destination = path.join(app.getPath('userData'), 'reports', filename)
+        console.log('saving ', destination)
+        report.save(pdf, destination)
+        rendering = false
+        res.end(JSON.stringify(filename))
       })
     } else {
       var m = osmRouter.handle(req, res) || mapeoRouter.handle(req, res)
