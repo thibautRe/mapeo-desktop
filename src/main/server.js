@@ -1,17 +1,14 @@
 var path = require('path')
-var fs = require('fs')
 var os = require('os')
-var { app, ipcMain } = require('electron')
+var { ipcMain } = require('electron')
 var createMapeoRouter = require('mapeo-server')
-var body = require('body/json')
 var ecstatic = require('ecstatic')
 var createOsmRouter = require('osm-p2p-server')
 var http = require('http')
 var logger = require('electron-timber')
 var throttle = require('lodash/throttle')
 
-const crypto = require('crypto')
-var report = require('./reports')
+var reports = require('./reports')
 var userConfig = require('./user-config')
 
 module.exports = function (osm, media, sendIpc, opts) {
@@ -37,44 +34,15 @@ module.exports = function (osm, media, sendIpc, opts) {
       baseDir: 'static'
     })
 
-    // TODO: Move to another file
-    const reportsDirectory = path.join(app.getPath('userData'), 'reports')
-    var match = req.url.match(/\/report\/(.*.pdf)/)
-    if (match) {
-      var filename = match[1]
-      var destination = path.join(reportsDirectory, filename)
-      fs.createReadStream(destination).pipe(res)
-    }
+    if (reports.middleware(req, res)) return
 
-    if (req.url === '/report' && req.method === 'POST') {
-      body(req, { limit: '50mb' }, function (err, body) {
-        if (err) return res.end(JSON.stringify({ error: err.toString() }))
-        const observations = body.observations
-        console.log('getting request', observations.length, 'observations')
-        console.log('observation example:', JSON.stringify(observations[0], null, 2))
-
-        // TODO: to improve performance,
-        // 1. generate hash based on observations content,
-        // 2. check to see if PDF has already been created
-        //  -> if so, use that
-        //  -> if not, generate new
-        var pdf = report.createPDF(observations)
-        var filename = crypto.randomBytes(16).toString('hex') + '.pdf'
-        var destination = path.join(reportsDirectory, filename)
-
-        console.log('saving ', destination)
-        report.save(pdf, destination)
-        res.end(JSON.stringify(`/report/${filename}`))
+    var m = osmRouter.handle(req, res) || mapeoRouter.handle(req, res)
+    if (!m) {
+      staticHandler(req, res, function (err) {
+        if (err) logger.error(err)
+        res.statusCode = 404
+        res.end('Not Found')
       })
-    } else {
-      var m = osmRouter.handle(req, res) || mapeoRouter.handle(req, res)
-      if (!m) {
-        staticHandler(req, res, function (err) {
-          if (err) logger.error(err)
-          res.statusCode = 404
-          res.end('Not Found')
-        })
-      }
     }
   })
 
