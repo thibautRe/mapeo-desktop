@@ -11,14 +11,13 @@ import { ipcRenderer } from 'electron'
 
 import { defineMessages, useIntl } from 'react-intl'
 
-const languages = [
-  {
-    es: 'Español',
-    en: 'English',
-    fr: 'Français',
-    pt: 'Português'
-  }
-]
+const languages = {
+  es: 'Español',
+  en: 'English',
+  fr: 'Français',
+  pt: 'Português'
+}
+
 
 const m = defineMessages({
   'dialog-enter-language': 'Choose a language',
@@ -41,13 +40,11 @@ const ChangeLanguage = ({ onClose, open }) => {
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{t(m['dialog-enter-latlon-coordinates'])}</DialogTitle>
+      <DialogTitle>{t(m['dialog-enter-language'])}</DialogTitle>
       <DialogContent>
         <FormControl>
           <Select
-            id='latlon-text'
-            placeholder='Lon, Lat'
-            type='text'
+            id='dialog-change-language'
             value={lang}
             onChange={event => setLang(event.target.value)}
           >
