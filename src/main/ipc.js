@@ -19,7 +19,7 @@ module.exports = function (win) {
     win.webContents.send('error', message)
   })
 
-  ipc.on('set-locale', function (ev, lang) {
+  ipc.on('change-language', function (ev, lang) {
     app.translations = i18n.setLocale(lang)
   })
 
